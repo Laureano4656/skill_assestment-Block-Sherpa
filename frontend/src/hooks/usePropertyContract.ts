@@ -316,8 +316,8 @@ export const usePropertyContract = (): UsePropertyContractReturn => {
         // Convert price to 18-decimal base units (USD / USDT standard)
         const priceString = priceInUSD.toString();
         const priceWei = ethers.parseEther(priceString);
-
-        const tx = await contract.registerProperty(propertyLocation, priceWei);
+        const txOverrides = getTxOverrides(currentNetworkChainId);
+        const tx = await contract.registerProperty(propertyLocation, priceWei, txOverrides);
         setTxHash(tx.hash);
 
         // Wait for confirmation
@@ -489,14 +489,16 @@ export const usePropertyContract = (): UsePropertyContractReturn => {
         const ethereum = (window as any).ethereum;
         const provider = new ethers.BrowserProvider(ethereum);
         const signer = await provider.getSigner();
-
+        const network = await provider.getNetwork();
+        const currentNetworkChainId = Number(network.chainId);
+        const txOverrides = getTxOverrides(currentNetworkChainId);
         const contract = new ethers.Contract(
           contractAddress,
           PropertyRegistryABI,
           signer
         );
 
-        const tx = await contract.transferOwnership(propertyId, newOwner);
+        const tx = await contract.transferOwnership(propertyId, newOwner, txOverrides);
         setTxHash(tx.hash);
         await tx.wait();
 
@@ -618,7 +620,16 @@ export const usePropertyContract = (): UsePropertyContractReturn => {
     },
     [account, chainId, contractAddress]
   );
-
+  // Helper to apply Polygon Amoy specific gas requirements
+  const getTxOverrides = (currentChainId: number) => {
+    if (currentChainId === POLYGON_AMOY_CHAIN_ID) {
+      return {
+        maxPriorityFeePerGas: ethers.parseUnits('25', 'gwei'),
+        maxFeePerGas: ethers.parseUnits('35', 'gwei'),
+      };
+    }
+    return {};
+  };
   const transferPropertyOwnershipWithPermit = useCallback(
     async (
       propertyId: number,
@@ -642,17 +653,23 @@ export const usePropertyContract = (): UsePropertyContractReturn => {
         const provider = new ethers.BrowserProvider(ethereum);
         const signer = await provider.getSigner();
 
+        const network = await provider.getNetwork();
+        const currentNetworkChainId = Number(network.chainId);
+        const txOverrides = getTxOverrides(currentNetworkChainId);
+
         const contract = new ethers.Contract(
           contractAddress,
           PropertyRegistryABI,
           signer
         );
 
+        // Pass txOverrides as the final argument
         const tx = await contract.transferOwnershipWithPermit(
           propertyId,
           newOwner,
           deadline,
-          signature
+          signature,
+          txOverrides
         );
         setTxHash(tx.hash);
         await tx.wait();

@@ -8,7 +8,7 @@ Production-grade decentralized property registry smart contract built with **Sol
 
 - **Contract**: [`src/PropertyRegistry.sol`](src/PropertyRegistry.sol)
 - **Interface**: [`src/interfaces/IPropertyRegistry.sol`](src/interfaces/IPropertyRegistry.sol)
-- **Security**: OpenZeppelin `ReentrancyGuard` (`@openzeppelin/contracts/utils/ReentrancyGuard.sol`)
+- **Security & Cryptography**: OpenZeppelin `ReentrancyGuard` (`@openzeppelin/contracts/utils/ReentrancyGuard.sol`), OpenZeppelin `EIP712` & `ECDSA` (`@openzeppelin/contracts/utils/cryptography/EIP712.sol`, `ECDSA.sol`)
 - **Gas Optimizations**: Custom errors instead of string requires, unchecked incrementing for monotonic IDs, tight struct representation.
 
 ### Core Functions
@@ -17,6 +17,8 @@ Production-grade decentralized property registry smart contract built with **Sol
   Registers a property on-chain with its physical/legal location and listing price in USD/USDT (18 decimals). Assigns ownership to `msg.sender`.
 - `transferOwnership(uint256 _propertyId, address _newOwner) external`:
   Transfers property ownership. Protected by access control (only current owner can transfer) and input validation (`_newOwner != address(0)` and `_newOwner != currentOwner`).
+- `transferOwnershipWithPermit(uint256 _propertyId, address _newOwner, uint256 _deadline, bytes calldata _signature) external`:
+  Transfers property ownership using an EIP-712 typed structured data permit signed by the new owner (`AcceptTransfer`), enforcing mutual consent and replay protection via sequential nonces.
 - `getProperty(uint256 _propertyId) external view returns (Property memory)`:
   Returns full on-chain property metadata (`id`, `propertyAddress`, `owner`, `price`, `registeredTimestamp`, `exists`).
 - `updatePrice(uint256 _propertyId, uint256 _newPrice) external`:
@@ -25,6 +27,10 @@ Production-grade decentralized property registry smart contract built with **Sol
   Returns total properties registered.
 - `isPropertyRegistered(uint256 _propertyId) external view returns (bool)`:
   Checks whether a property ID is valid and registered.
+- `nonces(address _owner) external view returns (uint256)`:
+  Returns the current EIP-712 permit nonce for an account.
+- `DOMAIN_SEPARATOR() external view returns (bytes32)`:
+  Returns the EIP-712 domain separator used for permit signing.
 
 ---
 
@@ -55,7 +61,7 @@ forge snapshot
 forge test --match-test test_TransferOwnership_Success -vvvv
 ```
 
-### Test Coverage Summary (18 / 18 passing)
+### Test Coverage Summary (23 / 23 passing)
 - ✅ `test_RegisterProperty_Success`
 - ✅ `test_RegisterProperty_MultipleProperties`
 - ✅ `test_RegisterProperty_RevertIfEmptyAddress`
@@ -66,6 +72,11 @@ forge test --match-test test_TransferOwnership_Success -vvvv
 - ✅ `test_TransferOwnership_RevertIfZeroAddress`
 - ✅ `test_TransferOwnership_RevertIfSameOwner`
 - ✅ `test_TransferOwnership_RevertIfPropertyNotFound`
+- ✅ `test_TransferOwnershipWithPermit_Success` (EIP-712 signature verification)
+- ✅ `test_TransferOwnershipWithPermit_RevertIfExpired` (EIP-712 deadline validation)
+- ✅ `test_TransferOwnershipWithPermit_RevertIfInvalidSigner` (EIP-712 forged signature revert)
+- ✅ `test_TransferOwnershipWithPermit_RevertIfReplayed` (EIP-712 nonce replay prevention)
+- ✅ `test_TransferOwnershipWithPermit_GasEfficiency` (Gas consumption < 80,000)
 - ✅ `test_GetProperty_RevertIfNotFound`
 - ✅ `test_IsPropertyRegistered_NonExistent`
 - ✅ `test_UpdatePrice_Success`
