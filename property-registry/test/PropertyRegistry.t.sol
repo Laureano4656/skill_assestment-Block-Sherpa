@@ -30,17 +30,30 @@ contract PropertyRegistryTest is Test {
         uint256 timestamp
     );
 
+    event OwnershipTransferredWithPermit(
+        uint256 indexed propertyId,
+        address indexed previousOwner,
+        address indexed newOwner,
+        uint256 nonce,
+        uint256 timestamp
+    );
+
     event PropertyPriceUpdated(
         uint256 indexed propertyId,
         uint256 oldPrice,
         uint256 newPrice
     );
 
+    uint256 public buyerPrivateKey = 0xB0B;
+    address public buyer;
+
     function setUp() public {
         registry = new PropertyRegistry();
+        buyer = vm.addr(buyerPrivateKey);
         vm.deal(owner1, 100 ether);
         vm.deal(owner2, 100 ether);
         vm.deal(nonOwner, 100 ether);
+        vm.deal(buyer, 100 ether);
     }
 
     // =========================================================================
@@ -310,5 +323,165 @@ contract PropertyRegistryTest is Test {
             )
         );
         registry.transferOwnership(id, recipient);
+    }
+
+    // =========================================================================
+    // 6. EIP-712 Permit Transfer Tests
+    // =========================================================================
+
+    function _signPermit(
+        uint256 signerPrivateKey,
+        uint256 propertyId,
+        address currentOwner,
+        address newOwner,
+        uint256 nonce,
+        uint256 deadline
+    ) internal view returns (bytes memory) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                registry.ACCEPT_TRANSFER_TYPEHASH(),
+                propertyId,
+                currentOwner,
+                newOwner,
+                nonce,
+                deadline
+            )
+        );
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                registry.DOMAIN_SEPARATOR(),
+                structHash
+            )
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, digest);
+        return abi.encodePacked(r, s, v);
+    }
+
+    function test_TransferOwnershipWithPermit_Success() public {
+        vm.prank(owner1);
+        uint256 propId = registry.registerProperty(SAMPLE_ADDR, SAMPLE_PRICE);
+
+        uint256 deadline = block.timestamp + 1 hours;
+        uint256 nonce = registry.nonces(buyer);
+        assertEq(nonce, 0, "Initial nonce should be 0");
+
+        bytes memory signature = _signPermit(
+            buyerPrivateKey,
+            propId,
+            owner1,
+            buyer,
+            nonce,
+            deadline
+        );
+
+        vm.expectEmit(true, true, true, true);
+        emit OwnershipTransferred(propId, owner1, buyer, block.timestamp);
+
+        vm.expectEmit(true, true, true, true);
+        emit OwnershipTransferredWithPermit(propId, owner1, buyer, 0, block.timestamp);
+
+        vm.prank(owner1);
+        registry.transferOwnershipWithPermit(propId, buyer, deadline, signature);
+
+        assertEq(registry.getProperty(propId).owner, buyer, "Owner should be updated to buyer");
+        assertEq(registry.nonces(buyer), 1, "Nonce should increment to 1");
+    }
+
+    function test_TransferOwnershipWithPermit_RevertIfExpired() public {
+        vm.prank(owner1);
+        uint256 propId = registry.registerProperty(SAMPLE_ADDR, SAMPLE_PRICE);
+
+        uint256 deadline = block.timestamp - 1; // Expired
+        bytes memory signature = _signPermit(
+            buyerPrivateKey,
+            propId,
+            owner1,
+            buyer,
+            0,
+            deadline
+        );
+
+        vm.prank(owner1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IPropertyRegistry.PermitExpired.selector,
+                deadline,
+                block.timestamp
+            )
+        );
+        registry.transferOwnershipWithPermit(propId, buyer, deadline, signature);
+    }
+
+    function test_TransferOwnershipWithPermit_RevertIfInvalidSigner() public {
+        vm.prank(owner1);
+        uint256 propId = registry.registerProperty(SAMPLE_ADDR, SAMPLE_PRICE);
+
+        uint256 attackerPrivateKey = 0x666;
+        uint256 deadline = block.timestamp + 1 hours;
+
+        // Attacker signs instead of actual buyer
+        bytes memory forgedSignature = _signPermit(
+            attackerPrivateKey,
+            propId,
+            owner1,
+            buyer,
+            0,
+            deadline
+        );
+
+        vm.prank(owner1);
+        vm.expectRevert(IPropertyRegistry.InvalidSignature.selector);
+        registry.transferOwnershipWithPermit(propId, buyer, deadline, forgedSignature);
+    }
+
+    function test_TransferOwnershipWithPermit_RevertIfReplayed() public {
+        vm.prank(owner1);
+        uint256 propId = registry.registerProperty(SAMPLE_ADDR, SAMPLE_PRICE);
+
+        uint256 deadline = block.timestamp + 1 hours;
+        bytes memory signature = _signPermit(
+            buyerPrivateKey,
+            propId,
+            owner1,
+            buyer,
+            0,
+            deadline
+        );
+
+        // First execution succeeds
+        vm.prank(owner1);
+        registry.transferOwnershipWithPermit(propId, buyer, deadline, signature);
+
+        // Try to transfer another property with same signature -> Reverts because nonce is now 1
+        vm.prank(buyer);
+        uint256 propId2 = registry.registerProperty("Second House", 500 ether);
+
+        vm.prank(buyer);
+        vm.expectRevert(IPropertyRegistry.InvalidSignature.selector);
+        registry.transferOwnershipWithPermit(propId2, owner1, deadline, signature);
+    }
+
+    function test_TransferOwnershipWithPermit_GasEfficiency() public {
+        vm.prank(owner1);
+        uint256 propId = registry.registerProperty(SAMPLE_ADDR, SAMPLE_PRICE);
+
+        uint256 deadline = block.timestamp + 1 hours;
+        bytes memory signature = _signPermit(
+            buyerPrivateKey,
+            propId,
+            owner1,
+            buyer,
+            0,
+            deadline
+        );
+
+        uint256 gasStart = gasleft();
+        vm.prank(owner1);
+        registry.transferOwnershipWithPermit(propId, buyer, deadline, signature);
+        uint256 gasUsed = gasStart - gasleft();
+
+        // Ensure total execution gas is well below 80,000 gas (no double gas!)
+        assertLt(gasUsed, 80_000, "Gas used with permit should be under 80k gas");
     }
 }

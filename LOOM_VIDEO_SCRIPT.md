@@ -25,8 +25,8 @@ Before hitting "Record" on Loom:
 > Today, I'll be walking you through the complete decentralized Property Registry system I built for the REChain real estate platform.
 > 
 > As you can see on screen in this architecture diagram, the system is designed in three cohesive layers:
-> 1. **Smart Contract Core**: Built with Solidity 0.8.20 and OpenZeppelin v5 standards, incorporating `ReentrancyGuard`, custom errors for gas optimization, and strict access controls.
-> 2. **Foundry Testing & Deployment Pipeline**: A comprehensive test suite with 18 passing tests covering unit logic, edge cases, access control reverts, and 256-run fuzz tests, deployed directly to Polygon Amoy testnet using Foundry scripts.
+> 1. **Smart Contract Core**: Built with Solidity 0.8.20 and OpenZeppelin v5 standards, incorporating `ReentrancyGuard`, custom errors for gas optimization, strict access controls, and a robust USD/USDT valuation architecture.
+> 2. **Foundry Testing & Deployment Pipeline**: A comprehensive test suite with 18 passing tests covering unit logic, edge cases, access control reverts, and 256-run fuzz tests, deployed and seeded on Polygon Amoy testnet using Foundry scripts.
 > 3. **Frontend Integration**: An ethers.js v6 integration directly into the REChain React/TypeScript application, featuring automatic network detection, on-chain verification badges, real-time transaction feedback with PolygonScan links, and multi-RPC failover resilience.
 > 
 > Let's dive straight into the Solidity code."
@@ -39,7 +39,9 @@ Before hitting "Record" on Loom:
 > "Let's look at the contract architecture. Following Web3 best practices, I started by separating concerns with a dedicated interface: `IPropertyRegistry.sol`.
 > 
 > Here, you can see our core `Property` struct:
-> - It tracks the sequential property ID, the physical or legal location address, the owner address, the listing price in wei, registration timestamp, and an existence flag.
+> - It tracks the sequential property ID, the physical or legal location address, the owner address, the listing price denominated in USD / USDT base units (18 decimals), registration timestamp, and an existence flag.
+> 
+> **An essential architectural decision here**: Real estate properties are Real World Assets (RWAs) appraised in fiat currency (USD). Storing prices in USD / USDT base units (where `12_500_000 ether` represents $12.5M USD/USDT) eliminates the volatility risk of native gas tokens like POL or ETH. This ensures the on-chain registry always stays 100% synchronized with real-world valuations, perfectly matches our off-chain MongoDB database, and is immediately compatible with stablecoin settlements.
 > 
 > Notice how we define our custom errors: `NotPropertyOwner`, `PropertyNotFound`, `EmptyPropertyAddress`, `InvalidPrice`, and `InvalidNewOwner`. Using custom errors rather than string reverts saves significant deployment and execution gas while providing rich debug parameters.
 > 
@@ -76,25 +78,26 @@ Before hitting "Record" on Loom:
 forge test -vvv
 ```
 
-> "As you can see, all 18 tests pass in just 65 milliseconds, with all 3 fuzz suites completing 256 runs with zero failures."
+> "As you can see, all 18 tests pass in just 50 milliseconds, with all 3 fuzz suites completing 256 runs with zero failures."
 
 *(Reviewer focus: Testing 20%)*
 
 ---
 
 ### 7:30 – 9:00 | Polygon Amoy Deployment & Seeding
-**📺 Screen to Show:** VS Code — [`script/DeployPropertyRegistry.s.sol`](property-registry/script/DeployPropertyRegistry.s.sol) and [PolygonScan Amoy Explorer](https://amoy.polygonscan.com/)
+**📺 Screen to Show:** VS Code — [`script/DeployPropertyRegistry.s.sol`](property-registry/script/DeployPropertyRegistry.s.sol), [`script/SeedPropertyRegistry.s.sol`](property-registry/script/SeedPropertyRegistry.s.sol), and [PolygonScan Amoy Explorer](https://amoy.polygonscan.com/)
 
-> "Next, deployment. I created deployment scripts targeting the Polygon Amoy testnet (Chain ID 80002).
+> "Next, deployment and database synchronization. I created deployment and seeding scripts targeting the Polygon Amoy testnet (Chain ID 80002).
 > 
 > Notice the script design:
-> - It uses parameterless `vm.startBroadcast()`. This gives maximum flexibility because it seamlessly supports both raw private keys and encrypted Foundry keystore accounts (`--account default`), ensuring private keys are never hardcoded or exposed.
-> - I also built a companion script, `SeedPropertyRegistry.s.sol`, which pre-populates initial properties on-chain so that the real estate platform has live data from day one.
+> - It uses `vm.startBroadcast()`. This gives maximum flexibility because it seamlessly supports both raw private keys and encrypted Foundry keystore accounts (`--account <name> --sender <address>`), ensuring private keys are never hardcoded or exposed in shell history.
+> - I built a companion script, `SeedPropertyRegistry.s.sol`, which pre-populates initial sample properties into the contract: Property #1 (The Glass Pavilion at $12.5M USD/USDT) and Property #2 (Skyline Penthouse at $8.95M USD/USDT).
+> - For network stability, we routed transactions through the high-availability Polygon Amoy Bor public node (`https://polygon-amoy-bor-rpc.publicnode.com`), avoiding rate-limits and HTTP 500 issues common with overloaded public endpoints.
 > 
 > Let's view our deployed contract on PolygonScan Amoy."
 
 **📺 Action:** Switch to browser tab showing PolygonScan Amoy.
-> "Here is our contract deployed on Polygon Amoy. You can see the verified contract bytecode, the deployment transaction, and recorded registration transactions."
+> "Here is our contract deployed on Polygon Amoy. You can see the verified contract bytecode, the deployment transaction, and our recorded seeding transactions."
 
 ---
 
@@ -114,7 +117,8 @@ forge test -vvv
 > "Here in the sidebar is our **Blockchain Registry** card:
 > - It shows our Polygon Amoy badge (80002).
 > - It automatically detected that this asset is already registered on-chain, displaying the green **'Verified On-Chain'** badge with On-Chain ID `#1`.
-> - It shows the on-chain asking price of 12.5 POL and the owner address.
+> - It displays the verified on-chain asking price of **$12,500,000 USD (USDT)**, perfectly matching the catalog price.
+> - It shows the current owner address.
 > - And because my connected wallet matches the on-chain owner, notice that an owner-exclusive **'Transfer Ownership'** form is rendered right here.
 > 
 > Now let's test a live registration from scratch on an unregistered property."
@@ -124,7 +128,7 @@ forge test -vvv
 > "Notice the status for *Desert Oasis*: it displays **'Not Registered'**.
 > - It displays the location: *Joshua Tree, Palm Springs, California*.
 > - It displays the listing price: $3,200,000.
-> - And here is our on-chain listing price field in POL.
+> - And here is our on-chain listing price field, automatically pre-filled in USD / USDT with $3,200,000.
 > 
 > Let's click **'Register on Blockchain'**."
 
@@ -149,18 +153,19 @@ forge test -vvv
 ### 11:30 – 12:30 | Technical Challenges & Key Decisions
 **📺 Screen to Show:** VS Code — [`frontend/src/hooks/usePropertyContract.ts`](frontend/src/hooks/usePropertyContract.ts)
 
-> "To wrap up, I want to briefly highlight a couple of non-trivial technical challenges I solved during development:
+> "To wrap up, I want to briefly highlight three non-trivial technical challenges I solved during development:
 > 
-> 1. **Polygon Amoy RPC DNS Outages**: During testing, Polygon's official `rpc-amoy.polygon.technology` domain suffered intermittent DNS resolution failures (`ERR_NAME_NOT_RESOLVED`). In `ethers.js` v6, creating a `JsonRpcProvider` without static network options causes an endless 1-second auto-detect retry loop. I resolved this by setting `{ staticNetwork: true }` and building a multi-RPC fallback gateway that seamlessly cycles between `drpc.org`, `publicnode.com`, and `thirdweb`.
-> 2. **EIP-3855 EVM Versioning**: Since Solidity 0.8.20 introduced the `PUSH0` opcode, deploying to certain L2s and sidechains requires explicit EVM versioning. In `foundry.toml`, I set `evm_version = "paris"` to ensure 100% bytecode compatibility across all Polygon Amoy RPC nodes.
-> 3. **AI-Assisted Development**: Embracing Block Sherpa's development culture, I leveraged AI-assisted tooling to plan meticulously, generate edge-case fuzzing matrices, and ship production-quality code rapidly without cutting corners on security."
+> 1. **Real-World Asset (RWA) Pricing Architecture**: Instead of storing property prices in volatile native gas tokens (POL/ETH) which fluctuate constantly with the crypto market, we denominated on-chain prices in USD / USDT base units (18 decimals). This ensures the on-chain registry remains 100% price-stable, synchronizes 1:1 with off-chain real estate listings, and is stablecoin-settlement ready.
+> 2. **RPC Resilience & Failover Strategy**: During testnet deployment and testing, public RPCs like `rpc-amoy.polygon.technology` and `drpc.org` encountered intermittent DNS failures and HTTP 500 internal errors. In `ethers.js` v6, creating a `JsonRpcProvider` without static network options causes an endless retry loop. I resolved this by enabling `{ staticNetwork: true }` and implementing a multi-RPC fallback gateway cycling between `publicnode.com`, `drpc.org`, and `thirdweb`.
+> 3. **EIP-3855 EVM Versioning**: Since Solidity 0.8.20 introduced the `PUSH0` opcode, deploying to certain L2s and sidechains requires explicit EVM versioning. In `foundry.toml`, I set `evm_version = "paris"` to ensure 100% bytecode compatibility across all Polygon Amoy nodes.
+> 4. **AI-Assisted Development**: Embracing Block Sherpa's development culture, I leveraged AI-assisted tooling to plan meticulously, generate edge-case fuzzing matrices, and ship production-quality code rapidly without cutting corners on security."
 
 ---
 
 ### 12:30 – 13:00 | Conclusion & Sign-Off
 **📺 Screen to Show:** Camera / `architecture.html`
 
-> "To summarize: we have a secure, gas-optimized `PropertyRegistry` smart contract protected by OpenZeppelin, an 18-test Foundry test suite, live deployment on Polygon Amoy, and a seamless React frontend integration.
+> "To summarize: we have a secure, gas-optimized `PropertyRegistry` smart contract protected by OpenZeppelin, an 18-test Foundry test suite, live deployment and seeding on Polygon Amoy, a stable USD/USDT RWA valuation architecture, and a seamless React frontend integration.
 > 
 > Thank you very much for your time and for this exciting challenge. I look forward to your feedback and to discussing how I can contribute to the Web3 vision at Block Sherpa!"
 
@@ -170,8 +175,8 @@ forge test -vvv
 
 | Assessment Criteria | How to Emphasize in the Video |
 | :--- | :--- |
-| **Solidity Code Quality (30%)** | Explicitly mention: OpenZeppelin `ReentrancyGuard`, custom errors instead of strings, `unchecked` monotonic increment, NatSpec comments. |
+| **Solidity Code Quality (30%)** | Explicitly mention: OpenZeppelin `ReentrancyGuard`, custom errors instead of strings, `unchecked` monotonic increment, NatSpec comments, and USD/USDT RWA base unit valuation. |
 | **Contract Functionality (25%)** | Point out: `registerProperty`, `transferOwnership`, `getProperty`, and the bonus `updatePrice`. |
 | **Foundry Testing (20%)** | Highlight: 18/18 passing, `vm.expectEmit` event validation, unauthorized caller reverts, and fuzzing with 256 runs. |
-| **Frontend Integration (15%)** | Show: Dual states (pre-registered and live registration), live MetaMask confirmation, transaction hash feedback, and Amoy explorer link. |
-| **Communication (10%)** | Speak clearly, follow the timeline, explain the *why* behind decisions (e.g. why multi-RPC fallback was needed). |
+| **Frontend Integration (15%)** | Show: Dual states (pre-registered and live registration), live MetaMask confirmation, transaction hash feedback, USD/USDT currency sync, and Amoy explorer link. |
+| **Communication (10%)** | Speak clearly, follow the timeline, explain the *why* behind decisions (e.g. why USD/USDT base units and multi-RPC fallback were chosen). |

@@ -196,21 +196,25 @@ const PropertyDetailsPage: React.FC = () => {
                   propertyName={property.title}
                   googleMapLink={property.googleMapLink}
                 />
+
+                {/* Blockchain Passport / Registry Card */}
+                <BlockchainRegistryCard
+                  propertyId={property._id}
+                  propertyTitle={property.title}
+                  propertyLocation={property.location}
+                  propertyPrice={property.price}
+                  initialOnChainId={property.onChainPropertyId}
+                />
               </div>
             </div>
 
-            {/* Right Column - Schedule Viewing Sidebar & Blockchain Passport */}
+            {/* Right Column - Schedule Viewing Sidebar */}
             <div className="lg:col-span-1">
-              <ScheduleViewingCard
-                property={{ name: property.title, id: property._id }}
-              />
-              <BlockchainRegistryCard
-                propertyId={property._id}
-                propertyTitle={property.title}
-                propertyLocation={property.location}
-                propertyPrice={property.price}
-                initialOnChainId={property.onChainPropertyId}
-              />
+              <div className="sticky top-24">
+                <ScheduleViewingCard
+                  property={{ name: property.title, id: property._id }}
+                />
+              </div>
             </div>
           </div>
         </div>

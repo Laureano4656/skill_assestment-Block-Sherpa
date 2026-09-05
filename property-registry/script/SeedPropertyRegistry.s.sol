@@ -13,6 +13,10 @@ import {PropertyRegistry} from "../src/PropertyRegistry.sol";
  *          --broadcast -vvvv
  */
 contract SeedPropertyRegistry is Script {
+    // Anvil default Account 0 private key (used only on local chain 31337)
+    uint256 internal constant ANVIL_ACCOUNT_0_PK =
+        0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
+
     function run() external {
         address contractAddress = vm.envOr(
             "PROPERTY_REGISTRY_ADDRESS",
@@ -21,10 +25,20 @@ contract SeedPropertyRegistry is Script {
 
         console2.log("==================================================");
         console2.log("Seeding PropertyRegistry at:", contractAddress);
-        console2.log("Caller:", msg.sender);
-        console2.log("==================================================");
+        console2.log("Chain ID:                   ", block.chainid);
 
-        vm.startBroadcast();
+        if (block.chainid == 31337) {
+            address deployer = vm.addr(ANVIL_ACCOUNT_0_PK);
+            console2.log("Environment:                 Local Anvil (31337)");
+            console2.log("Caller (Anvil Account 0):   ", deployer);
+            console2.log("==================================================");
+            vm.startBroadcast(ANVIL_ACCOUNT_0_PK);
+        } else {
+            console2.log("Environment:                 Remote / Testnet");
+            console2.log("Caller (Keystore / CLI):    ", msg.sender);
+            console2.log("==================================================");
+            vm.startBroadcast();
+        }
 
         PropertyRegistry registry;
 
@@ -37,20 +51,19 @@ contract SeedPropertyRegistry is Script {
             registry = PropertyRegistry(contractAddress);
         }
 
-        // Seed Property #1: The Glass Pavilion
+        // Seed Property #1: The Glass Pavilion ($12,500,000 USD / USDT, 18-decimal base units)
         uint256 id1 = registry.registerProperty(
             "Montecito, Santa Barbara, California",
             12_500_000 ether
         );
         console2.log("Registered Property #1 ID:", id1);
 
-        // Seed Property #2: Skyline Penthouse
+        // Seed Property #2: Skyline Penthouse ($8,950,000 USD / USDT, 18-decimal base units)
         uint256 id2 = registry.registerProperty(
             "Tribeca, New York, NY",
             8_950_000 ether
         );
         console2.log("Registered Property #2 ID:", id2);
-
         vm.stopBroadcast();
 
         console2.log("==================================================");
