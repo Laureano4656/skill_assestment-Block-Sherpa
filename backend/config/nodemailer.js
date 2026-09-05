@@ -29,7 +29,8 @@ const createTransporter = () => {
             'api-key': process.env.BREVO_API_KEY,
             'accept': 'application/json',
             'content-type': 'application/json'
-          }
+          },
+          timeout: 10000 // 10 second timeout — prevents request from hanging forever
         });
 
         console.log('✅ Email sent successfully via REST API:', response.data.messageId);

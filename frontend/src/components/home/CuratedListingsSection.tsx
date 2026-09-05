@@ -6,12 +6,12 @@ import desertOasis from '../../images/Desert Oasis.jpg';
 import coastalRetreat from '../../images/Coastal Retreat.jpg';
 
 const CuratedListingsSection: React.FC = () => {
-    const propertyImages = [
-        glassPavilion,
-        skylinePenthouse,
-        desertOasis,
-        coastalRetreat
-    ];
+  const propertyImages = [
+    glassPavilion,
+    skylinePenthouse,
+    desertOasis,
+    coastalRetreat
+  ];
 
   return (
     <section className="bg-[#F9F7F2] py-24 relative overflow-hidden">
@@ -42,12 +42,12 @@ const CuratedListingsSection: React.FC = () => {
           {/* Large Featured Property */}
           <div className="col-span-12 md:col-span-8 rounded-2xl overflow-hidden shadow-[0px_20px_25px_-5px_rgba(0,0,0,0.1)] relative group">
             <div className="relative h-[500px]">
-              <img 
-                src={propertyImages[0]} 
-                alt="The Glass Pavilion luxury villa in Montecito California" 
-                className="absolute inset-0 w-full h-full object-cover" 
+              <img
+                src={propertyImages[0]}
+                alt="The Glass Pavilion luxury villa in Montecito California"
+                className="absolute inset-0 w-full h-full object-cover"
                 loading="eager"
-                fetchPriority="high"
+
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-8">
@@ -76,10 +76,10 @@ const CuratedListingsSection: React.FC = () => {
           {/* Small Property Card */}
           <div className="col-span-12 md:col-span-4 rounded-2xl overflow-hidden shadow-[0px_20px_25px_-5px_rgba(0,0,0,0.1)] relative group">
             <div className="relative h-[500px]">
-              <img 
-                src={propertyImages[1]} 
-                alt="Skyline Penthouse luxury apartment in New York NY" 
-                className="absolute inset-0 w-full h-full object-cover" 
+              <img
+                src={propertyImages[1]}
+                alt="Skyline Penthouse luxury apartment in New York NY"
+                className="absolute inset-0 w-full h-full object-cover"
                 loading="lazy"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
@@ -94,10 +94,10 @@ const CuratedListingsSection: React.FC = () => {
           {/* Desert Oasis */}
           <div className="col-span-12 md:col-span-4 rounded-2xl overflow-hidden shadow-[0px_20px_25px_-5px_rgba(0,0,0,0.1)] aspect-square">
             <div className="relative h-full">
-              <img 
-                src={propertyImages[2]} 
-                alt="Desert Oasis modern home in Joshua Tree CA" 
-                className="absolute inset-0 w-full h-full object-cover" 
+              <img
+                src={propertyImages[2]}
+                alt="Desert Oasis modern home in Joshua Tree CA"
+                className="absolute inset-0 w-full h-full object-cover"
                 loading="lazy"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
@@ -112,10 +112,10 @@ const CuratedListingsSection: React.FC = () => {
           {/* Coastal Retreat */}
           <div className="col-span-12 md:col-span-8 rounded-2xl overflow-hidden shadow-[0px_20px_25px_-5px_rgba(0,0,0,0.1)] relative">
             <div className="relative h-[800px]">
-              <img 
-                src={propertyImages[3]} 
-                alt="Coastal Retreat mansion in Malibu California" 
-                className="absolute inset-0 w-full h-full object-cover" 
+              <img
+                src={propertyImages[3]}
+                alt="Coastal Retreat mansion in Malibu California"
+                className="absolute inset-0 w-full h-full object-cover"
                 loading="lazy"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />

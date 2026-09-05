@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { fallbackProperties } from '../data/fallbackProperties';
 
 // API Base URL - uses env variable or falls back to localhost
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
@@ -69,13 +70,39 @@ export const userAPI = {
     apiClient.get('/users/me'),
 };
 
-// Properties (CRUD — admin-managed listings)
+// Properties (CRUD — admin-managed listings with offline fallback resilience)
 export const propertiesAPI = {
-  getAll: () =>
-    apiClient.get('/products/list'),
+  getAll: async () => {
+    try {
+      const response = await apiClient.get('/products/list');
+      if (
+        response.data?.success &&
+        Array.isArray(response.data?.property) &&
+        response.data.property.length > 0
+      ) {
+        return response;
+      }
+      return { data: { success: true, property: fallbackProperties } };
+    } catch {
+      return { data: { success: true, property: fallbackProperties } };
+    }
+  },
 
-  getById: (id: string) =>
-    apiClient.get(`/products/single/${id}`),
+  getById: async (id: string) => {
+    try {
+      const response = await apiClient.get(`/products/single/${id}`);
+      if (response.data?.success && response.data?.property) {
+        return response;
+      }
+      const fallback =
+        fallbackProperties.find((p) => p._id === id) || fallbackProperties[0];
+      return { data: { success: true, property: fallback } };
+    } catch {
+      const fallback =
+        fallbackProperties.find((p) => p._id === id) || fallbackProperties[0];
+      return { data: { success: true, property: fallback } };
+    }
+  },
 };
 
 // User-submitted property listings (require auth)

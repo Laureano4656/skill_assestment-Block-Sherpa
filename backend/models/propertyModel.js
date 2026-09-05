@@ -90,6 +90,12 @@ const propertySchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+
+    // Optional on-chain token / property ID from the PropertyRegistry smart contract
+    onChainPropertyId: {
+      type: Number,
+      default: null,
+    },
   },
   {
     // Adds createdAt and updatedAt fields automatically

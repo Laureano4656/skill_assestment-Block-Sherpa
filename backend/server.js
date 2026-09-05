@@ -5,7 +5,7 @@ import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import compression from 'compression';
 import mongoSanitize from 'express-mongo-sanitize';
-import connectdb from './config/mongodb.js';
+import connectdb, { closeDB } from './config/mongodb.js';
 import { trackAPIStats } from './middleware/statsMiddleware.js';
 import { requestIdMiddleware } from './middleware/requestIdMiddleware.js';
 import logger from './utils/logger.js';
@@ -18,8 +18,8 @@ import adminRouter from './routes/adminRoutes.js';
 import propertyRoutes from './routes/propertyRoutes.js';
 import healthRouter from './routes/healthRoutes.js';
 import getStatusPage from './serverweb.js';
-import { startExpireListingsJob } from './utils/expireListings.js';
-import { startAutoUnsuspendJob } from './utils/autoUnsuspend.js';
+import { startExpireListingsJob, stopExpireListingsJob } from './utils/expireListings.js';
+import { startAutoUnsuspendJob, stopAutoUnsuspendJob } from './utils/autoUnsuspend.js';
 
 if (process.env.NODE_ENV !== 'production') {
   dotenv.config({ path: './.env.local' });
@@ -36,6 +36,23 @@ if (process.env.NODE_ENV === 'production') {
   // In development, trust local proxies
   app.set('trust proxy', 'loopback');
 }
+
+// Graceful shutdown state
+let isShuttingDown = false;
+app.locals.isShuttingDown = false;
+
+// Reject new incoming requests during graceful shutdown
+app.use((req, res, next) => {
+  if (isShuttingDown) {
+    res.setHeader('Connection', 'close');
+    return res.status(503).json({
+      success: false,
+      message: 'Server is shutting down',
+      code: 'SERVER_SHUTTING_DOWN',
+    });
+  }
+  next();
+});
 
 // Enhanced rate limiting configuration
 const limiter = rateLimit({
@@ -225,30 +242,66 @@ process.on('uncaughtException', (err) => {
 
 // Graceful shutdown
 let server;
-process.on('SIGTERM', async () => {
-  logger.info('SIGTERM received. Shutting down gracefully...');
-  if (server) {
-    server.close(() => {
-      logger.info('HTTP server closed.');
-    });
-  }
-  // Give processes time to finish
-  setTimeout(() => {
-    process.exit(0);
-  }, 5000);
-});
 
-process.on('SIGINT', async () => {
-  logger.info('SIGINT received. Shutting down gracefully...');
+const gracefulShutdown = async (signal) => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  app.locals.isShuttingDown = true;
+  logger.info(`${signal} received. Shutting down gracefully...`);
+
+  // Stop background cron jobs so they do not query MongoDB during shutdown
+  try {
+    stopExpireListingsJob();
+    stopAutoUnsuspendJob();
+  } catch (cronErr) {
+    logger.error('Error stopping background cron jobs', { error: cronErr.message });
+  }
+
+  // Safety force-exit timer: if connections do not close within 5s, exit forcefully
+  const forceExitTimer = setTimeout(() => {
+    logger.warn('Forced shutdown due to timeout while draining connections.');
+    process.exit(1);
+  }, 5000);
+  forceExitTimer.unref();
+
   if (server) {
-    server.close(() => {
-      logger.info('HTTP server closed.');
+    // Stop accepting new connections and drain active ones
+    server.close(async (closeErr) => {
+      if (closeErr) {
+        logger.error('Error closing HTTP server:', { error: closeErr.message });
+      } else {
+        logger.info('HTTP server closed.');
+      }
+
+      try {
+        await closeDB();
+        logger.info('MongoDB connection closed.');
+      } catch (dbErr) {
+        logger.error('Error closing MongoDB connection:', { error: dbErr.message });
+      }
+
+      clearTimeout(forceExitTimer);
       process.exit(0);
     });
+
+    // Close idle keep-alive connections so clients do not reuse them
+    if (typeof server.closeIdleConnections === 'function') {
+      server.closeIdleConnections();
+    }
   } else {
+    try {
+      await closeDB();
+      logger.info('MongoDB connection closed.');
+    } catch (dbErr) {
+      logger.error('Error closing MongoDB connection:', { error: dbErr.message });
+    }
+    clearTimeout(forceExitTimer);
     process.exit(0);
   }
-});
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Status check endpoint
 app.get('/status', (req, res) => {

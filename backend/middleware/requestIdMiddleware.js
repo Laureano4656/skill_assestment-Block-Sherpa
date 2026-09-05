@@ -30,6 +30,9 @@ export const requestIdMiddleware = (req, res, next) => {
   // Only log errors/warnings (4xx/5xx responses)
   res.on('finish', () => {
     if (res.statusCode >= 400) {
+      if (res.statusCode === 503 && req.app?.locals?.isShuttingDown) {
+        return;
+      }
       req.logger.warn('Request failed', { statusCode: res.statusCode });
     }
   });

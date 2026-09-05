@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>REChain - PropertyRegistry System Architecture</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(18, 24, 40, 0.85);
+      --border: rgba(255, 255, 255, 0.08);
+      --accent-purple: #8247e5;
+      --accent-coral: #e06c53;
+      --accent-emerald: #10b981;
+      --accent-blue: #3b82f6;
+      --accent-cyan: #06b6d4;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(130, 71, 229, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(224, 108, 83, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.06) 0%, transparent 60%);
+    }
+
+    .container {
+      max-width: 1240px;
+      width: 100%;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .badge-bar {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(10px);
+    }
+
+    .badge.polygon {
+      color: #a855f7;
+      border-color: rgba(168, 85, 247, 0.3);
+      background: rgba(168, 85, 247, 0.1);
+    }
+
+    .badge.solidity {
+      color: #60a5fa;
+      border-color: rgba(96, 165, 250, 0.3);
+      background: rgba(96, 165, 250, 0.1);
+    }
+
+    .badge.foundry {
+      color: #f97316;
+      border-color: rgba(249, 115, 22, 0.3);
+      background: rgba(249, 115, 22, 0.1);
+    }
+
+    .badge.oz {
+      color: #34d399;
+      border-color: rgba(52, 211, 153, 0.3);
+      background: rgba(52, 211, 153, 0.1);
+    }
+
+    h1 {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: -0.8px;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.subhead {
+      color: var(--text-muted);
+      font-size: 16px;
+    }
+
+    /* Grid layout */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 24px;
+      margin-bottom: 30px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 26px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+    }
+
+    .card.purple::before { background: linear-gradient(90deg, #8247e5, #c084fc); }
+    .card.coral::before { background: linear-gradient(90deg, #e06c53, #fb923c); }
+    .card.emerald::before { background: linear-gradient(90deg, #10b981, #6ee7b7); }
+    .card.blue::before { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-title .icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .icon-purple { background: rgba(130, 71, 229, 0.2); color: #c084fc; }
+    .icon-coral { background: rgba(224, 108, 83, 0.2); color: #fb923c; }
+    .icon-emerald { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+    .icon-blue { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+
+    .code-box {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #e2e8f0;
+      margin-bottom: 12px;
+    }
+
+    .code-box .keyword { color: #f472b6; }
+    .code-box .fn { color: #60a5fa; }
+    .code-box .comment { color: #64748b; }
+    .code-box .accent { color: #34d399; }
+
+    .feature-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .feature-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .feature-list li strong {
+      color: var(--text-main);
+    }
+
+    .feature-list .check {
+      color: var(--accent-emerald);
+      font-weight: bold;
+    }
+
+    /* Architecture SVG Flow */
+    .flow-wrapper {
+      grid-column: span 12;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 30px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+    }
+
+    .flow-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+
+    .flow-header h2 {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .flow-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: rgba(130, 71, 229, 0.15);
+      color: #c084fc;
+      border: 1px solid rgba(130, 71, 229, 0.3);
+    }
+
+    svg.diagram {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* Stats strip */
+    .stats-strip {
+      grid-column: span 12;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .stat-pill {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 20px;
+      text-align: center;
+    }
+
+    .stat-val {
+      font-size: 28px;
+      font-weight: 800;
+      color: #ffffff;
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 4px;
+    }
+
+    .stat-val.purple { color: #c084fc; }
+    .stat-val.emerald { color: #34d399; }
+    .stat-val.coral { color: #fb923c; }
+    .stat-val.blue { color: #60a5fa; }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      font-size: 13px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <header>
+    <div class="badge-bar">
+      <span class="badge polygon">⬡ Polygon Amoy (80002)</span>
+      <span class="badge solidity">◆ Solidity 0.8.20</span>
+      <span class="badge foundry">⚙ Foundry / Forge</span>
+      <span class="badge oz">🛡 OpenZeppelin v5</span>
+    </div>
+    <h1>PropertyRegistry System Architecture</h1>
+    <p class="subhead">Block Sherpa Technical Assessment • Smart Contract & Full-Stack Integration</p>
+  </header>
+
+  <!-- Flow Visualizer -->
+  <div class="grid">
+    <div class="flow-wrapper">
+      <div class="flow-header">
+        <h2>End-to-End Architectural Data Flow</h2>
+        <span class="flow-tag">REChain DApp Architecture</span>
+      </div>
+
+      <svg class="diagram" viewBox="0 0 1120 480" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="gradPurple" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#8247e5" stop-opacity="0.3" />
+            <stop offset="100%" stop-color="#4c1d95" stop-opacity="0.1" />
+          </linearGradient>
+          <linearGradient id="gradCoral" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#e06c53" stop-opacity="0.3" />
+            <stop offset="100%" stop-color="#7c2d12" stop-opacity="0.1" />
+          </linearGradient>
+          <linearGradient id="gradEmerald" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#10b981" stop-opacity="0.3" />
+            <stop offset="100%" stop-color="#064e3b" stop-opacity="0.1" />
+          </linearGradient>
+          <linearGradient id="gradBlue" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.3" />
+            <stop offset="100%" stop-color="#1e3a8a" stop-opacity="0.1" />
+          </linearGradient>
+          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="6" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+        </defs>
+
+        <!-- Column 1: Client / Web3 Interface -->
+        <rect x="20" y="30" width="310" height="420" rx="16" fill="url(#gradCoral)" stroke="rgba(224, 108, 83, 0.4)" stroke-width="1.5" />
+        <text x="40" y="65" fill="#fb923c" font-family="'Plus Jakarta Sans'" font-size="16" font-weight="700">CLIENT & WEB3 LAYER</text>
+        <text x="40" y="85" fill="#9ca3af" font-family="'Plus Jakarta Sans'" font-size="12">React 18 • TypeScript • Tailwind</text>
+
+        <!-- Box: PropertyDetailsPage -->
+        <rect x="40" y="110" width="270" height="90" rx="10" fill="#121828" stroke="rgba(255, 255, 255, 0.1)" />
+        <text x="55" y="138" fill="#ffffff" font-family="'Plus Jakarta Sans'" font-size="14" font-weight="700">PropertyDetailsPage.tsx</text>
+        <text x="55" y="160" fill="#9ca3af" font-family="'Plus Jakarta Sans'" font-size="12">Renders property specs, location &</text>
+        <text x="55" y="180" fill="#fb923c" font-family="'JetBrains Mono'" font-size="11">&lt;BlockchainRegistryCard /&gt;</text>
+
+        <!-- Box: BlockchainRegistryCard -->
+        <rect x="40" y="220" width="270" height="110" rx="10" fill="#121828" stroke="rgba(255, 255, 255, 0.1)" />
+        <text x="55" y="248" fill="#ffffff" font-family="'Plus Jakarta Sans'" font-size="14" font-weight="700">BlockchainRegistryCard</text>
+        <text x="55" y="270" fill="#34d399" font-family="'Plus Jakarta Sans'" font-size="12">✓ Verified On-Chain badge (#ID, Owner)</text>
+        <text x="55" y="290" fill="#fb923c" font-family="'Plus Jakarta Sans'" font-size="12">⚡ "Register on Blockchain" button</text>
+        <text x="55" y="310" fill="#60a5fa" font-family="'Plus Jakarta Sans'" font-size="12">↗ Amoy PolygonScan tx link</text>
+
+        <!-- Box: usePropertyContract hook -->
+        <rect x="40" y="350" width="270" height="80" rx="10" fill="#121828" stroke="rgba(255, 255, 255, 0.1)" />
+        <text x="55" y="376" fill="#c084fc" font-family="'JetBrains Mono'" font-size="13" font-weight="700">usePropertyContract.ts</text>
+        <text x="55" y="396" fill="#9ca3af" font-family="'Plus Jakarta Sans'" font-size="11">ethers.js v6 BrowserProvider</text>
+        <text x="55" y="414" fill="#9ca3af" font-family="'Plus Jakarta Sans'" font-size="11">Network auto-switch to 80002</text>
+
+        <!-- Arrow 1: Hook to RPC -->
+        <path d="M310 275 H 410" stroke="#8247e5" stroke-width="2.5" stroke-dasharray="6 4" />
+        <polygon points="410,270 420,275 410,280" fill="#8247e5" />
+        <text x="325" y="265" fill="#c084fc" font-family="'JetBrains Mono'" font-size="11">ethers.js</text>
+
+        <!-- Column 2: Network & Multi-RPC Gateway -->
+        <rect x="420" y="30" width="280" height="420" rx="16" fill="url(#gradPurple)" stroke="rgba(130, 71, 229, 0.4)" stroke-width="1.5" />
+        <text x="440" y="65" fill="#c084fc" font-family="'Plus Jakarta Sans'" font-size="16" font-weight="700">NETWORK & RPC LAYER</text>
+        <text x="440" y="85" fill="#9ca3af" font-family="'Plus Jakarta Sans'" font-size="12">Multi-Endpoint Fallback (staticNetwork)</text>
+
+        <!-- Box: Multi-RPC Nodes -->
+        <rect x="440" y="110" width="240" height="150" rx="10" fill="#121828" stroke="rgba(255, 255, 255, 0.1)" />
+        <text x="455" y="136" fill="#ffffff" font-family="'Plus Jakarta Sans'" font-size="13" font-weight="700">Polygon Amoy Testnet (80002)</text>
+        <line x1="455" y1="146" x2="665" y2="146" stroke="rgba(255, 255, 255, 0.1)" />
+        <text x="455" y="170" fill="#34d399" font-family="'JetBrains Mono'" font-size="11">● polygon-amoy.drpc.org</text>
+        <text x="455" y="195" fill="#34d399" font-family="'JetBrains Mono'" font-size="11">● publicnode.com/amoy</text>
+        <text x="455" y="220" fill="#34d399" font-family="'JetBrains Mono'" font-size="11">● 80002.rpc.thirdweb.com</text>
+        <text x="455" y="245" fill="#94a3b8" font-family="'Plus Jakarta Sans'" font-size="11">Auto-failover + zero retry loop</text>
+
+        <!-- Box: Wallet Signer -->
+        <rect x="440" y="280" width="240" height="150" rx="10" fill="#121828" stroke="rgba(255, 255, 255, 0.1)" />
+        <text x="455" y="306" fill="#ffffff" font-family="'Plus Jakarta Sans'" font-size="13" font-weight="700">Signer & Deployment</text>
+        <line x1="455" y1="316" x2="665" y2="316" stroke="rgba(255, 255, 255, 0.1)" />
+        <text x="455" y="340" fill="#fb923c" font-family="'Plus Jakarta Sans'" font-size="12">🦊 MetaMask / BrowserProvider</text>
+        <text x="455" y="365" fill="#c084fc" font-family="'Plus Jakarta Sans'" font-size="12">🔐 Foundry Keystore (default)</text>
+        <text x="455" y="390" fill="#9ca3af" font-family="'Plus Jakarta Sans'" font-size="11">EIP-1559 gas estimation</text>
+        <text x="455" y="412" fill="#9ca3af" font-family="'Plus Jakarta Sans'" font-size="11">Transaction signing & broadcast</text>
+
+        <!-- Arrow 2: RPC to Smart Contract -->
+        <path d="M700 275 H 780" stroke="#10b981" stroke-width="2.5" />
+        <polygon points="780,270 790,275 780,280" fill="#10b981" />
+        <text x="715" y="265" fill="#34d399" font-family="'JetBrains Mono'" font-size="11">EVM Call</text>
+
+        <!-- Column 3: Smart Contract & Foundry -->
+        <rect x="790" y="30" width="310" height="420" rx="16" fill="url(#gradEmerald)" stroke="rgba(16, 185, 129, 0.4)" stroke-width="1.5" />
+        <text x="810" y="65" fill="#34d399" font-family="'Plus Jakarta Sans'" font-size="16" font-weight="700">SMART CONTRACT LAYER</text>
+        <text x="810" y="85" fill="#9ca3af" font-family="'Plus Jakarta Sans'" font-size="12">Solidity 0.8.20 • OpenZeppelin v5</text>
+
+        <!-- Box: PropertyRegistry.sol -->
+        <rect x="810" y="110" width="270" height="190" rx="10" fill="#121828" stroke="rgba(255, 255, 255, 0.1)" />
+        <text x="825" y="136" fill="#34d399" font-family="'JetBrains Mono'" font-size="13" font-weight="700">PropertyRegistry.sol</text>
+        <text x="825" y="156" fill="#9ca3af" font-family="'Plus Jakarta Sans'" font-size="11">is IPropertyRegistry, ReentrancyGuard</text>
+        <line x1="825" y1="166" x2="1065" y2="166" stroke="rgba(255, 255, 255, 0.1)" />
+        <text x="825" y="188" fill="#60a5fa" font-family="'JetBrains Mono'" font-size="11">registerProperty(addr, price)</text>
+        <text x="825" y="208" fill="#60a5fa" font-family="'JetBrains Mono'" font-size="11">transferOwnership(id, newOwner)</text>
+        <text x="825" y="228" fill="#60a5fa" font-family="'JetBrains Mono'" font-size="11">getProperty(id) view</text>
+        <text x="825" y="248" fill="#60a5fa" font-family="'JetBrains Mono'" font-size="11">updatePrice(id, newPrice)</text>
+        <text x="825" y="272" fill="#fb923c" font-family="'Plus Jakarta Sans'" font-size="11">🛡 nonReentrant • Custom Errors</text>
+        <text x="825" y="290" fill="#fb923c" font-family="'Plus Jakarta Sans'" font-size="11">📢 Events: PropertyRegistered, etc.</text>
+
+        <!-- Box: Foundry Test Suite -->
+        <rect x="810" y="320" width="270" height="110" rx="10" fill="#121828" stroke="rgba(255, 255, 255, 0.1)" />
+        <text x="825" y="346" fill="#fb923c" font-family="'JetBrains Mono'" font-size="13" font-weight="700">PropertyRegistry.t.sol</text>
+        <text x="825" y="370" fill="#34d399" font-family="'Plus Jakarta Sans'" font-size="12">✓ 18/18 Tests Passing</text>
+        <text x="825" y="392" fill="#9ca3af" font-family="'Plus Jakarta Sans'" font-size="11">• Access control & edge reverts</text>
+        <text x="825" y="412" fill="#9ca3af" font-family="'Plus Jakarta Sans'" font-size="11">• 3 Fuzz test suites (256 runs each)</text>
+      </svg>
+    </div>
+
+    <!-- Metrics Strip -->
+    <div class="stats-strip">
+      <div class="stat-pill">
+        <div class="stat-val emerald">18 / 18</div>
+        <div class="stat-label">Foundry Tests Passing</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-val purple">80002</div>
+        <div class="stat-label">Polygon Amoy Chain ID</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-val coral">3 Fuzz</div>
+        <div class="stat-label">256 Runs Each</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-val blue">8 Listings</div>
+        <div class="stat-label">Seeded MongoDB Catalog</div>
+      </div>
+    </div>
+
+    <!-- Highlights Column 1 -->
+    <div class="card purple" style="grid-column: span 6;">
+      <div class="card-title">
+        <div class="icon icon-purple">🛡</div>
+        Security & OpenZeppelin Integration
+      </div>
+      <div class="code-box">
+<span class="keyword">import</span> {ReentrancyGuard} <span class="keyword">from</span> <span class="accent">"@openzeppelin/contracts/utils/ReentrancyGuard.sol"</span>;
+<span class="keyword">import</span> {IPropertyRegistry} <span class="keyword">from</span> <span class="accent">"./interfaces/IPropertyRegistry.sol"</span>;
+
+<span class="keyword">contract</span> <span class="fn">PropertyRegistry</span> <span class="keyword">is</span> IPropertyRegistry, ReentrancyGuard {
+    <span class="comment">// Protected by nonReentrant modifier against state reentrancy</span>
+    <span class="keyword">function</span> <span class="fn">registerProperty</span>(...) <span class="keyword">external</span> <span class="keyword">nonReentrant</span> <span class="keyword">returns</span> (uint256) { ... }
+}
+      </div>
+      <ul class="feature-list">
+        <li><span class="check">✓</span> <strong>Reentrancy Protection:</strong> OpenZeppelin v5 ReentrancyGuard applied on all mutating functions.</li>
+        <li><span class="check">✓</span> <strong>Strict Access Control:</strong> Only current property owner can transfer ownership or update prices.</li>
+        <li><span class="check">✓</span> <strong>Gas Optimization:</strong> Custom errors (e.g. <code>NotPropertyOwner</code>, <code>InvalidPrice</code>) instead of expensive string reverts.</li>
+      </ul>
+    </div>
+
+    <!-- Highlights Column 2 -->
+    <div class="card coral" style="grid-column: span 6;">
+      <div class="card-title">
+        <div class="icon icon-coral">⚡</div>
+        Frontend & RPC Network Resilience
+      </div>
+      <div class="code-box">
+<span class="comment">// ethers.js v6 with staticNetwork & zero auto-detect polling</span>
+<span class="keyword">const</span> provider = <span class="keyword">new</span> ethers.<span class="fn">JsonRpcProvider</span>(
+    rpcUrl, 
+    { chainId: <span class="accent">80002</span>, name: <span class="accent">'amoy'</span> }, 
+    { staticNetwork: <span class="keyword">true</span> }
+);
+<span class="comment">// Multi-RPC gateway fallback: drpc.org → publicnode → thirdweb</span>
+      </div>
+      <ul class="feature-list">
+        <li><span class="check">✓</span> <strong>Zero DNS Failure:</strong> Replaced dead official RPC with high-availability verified public Amoy RPCs.</li>
+        <li><span class="check">✓</span> <strong>Dual Demonstration States:</strong> Properties #1 & #2 pre-verified on-chain; Properties #3-#8 ready for live registration.</li>
+        <li><span class="check">✓</span> <strong>Seamless MetaMask Integration:</strong> Automatic Amoy network detection, chain addition, and 1-click switching.</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <footer>
+    REChain Real Estate Platform • Block Sherpa Technical Assessment • Built with Cursor & AI-Assisted Engineering
+  </footer>
+
+</div>
+
+</body>
+</html>

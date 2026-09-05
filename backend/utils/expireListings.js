@@ -1,6 +1,8 @@
 import cron from 'node-cron';
 import Property from '../models/propertyModel.js';
 
+let expireListingsTask = null;
+
 /**
  * Auto-expire active listings whose expiresAt date has passed.
  * Runs once every day at 00:05 (server local time).
@@ -9,7 +11,7 @@ import Property from '../models/propertyModel.js';
  * Admin-added properties have expiresAt: null and are never expired by this job.
  */
 export function startExpireListingsJob() {
-    cron.schedule('5 0 * * *', async () => {
+    expireListingsTask = cron.schedule('5 0 * * *', async () => {
         try {
             const result = await Property.updateMany(
                 {
@@ -28,4 +30,15 @@ export function startExpireListingsJob() {
     });
 
     console.log('[ExpireListings] Cron job scheduled — runs daily at 00:05.');
+}
+
+/**
+ * Cleanly stop the cron job during application shutdown.
+ */
+export function stopExpireListingsJob() {
+    if (expireListingsTask) {
+        expireListingsTask.stop();
+        expireListingsTask = null;
+        console.log('[ExpireListings] Cron job stopped.');
+    }
 }

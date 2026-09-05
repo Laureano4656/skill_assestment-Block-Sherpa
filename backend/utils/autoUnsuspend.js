@@ -1,6 +1,8 @@
 import cron from 'node-cron';
 import User from '../models/userModel.js';
 
+let autoUnsuspendTask = null;
+
 /**
  * Auto-unsuspend cron job
  * Runs daily at 00:10 to check for expired suspensions
@@ -8,7 +10,7 @@ import User from '../models/userModel.js';
  */
 export function startAutoUnsuspendJob() {
   // Run daily at 00:10 (10 minutes after midnight)
-  cron.schedule('10 0 * * *', async () => {
+  autoUnsuspendTask = cron.schedule('10 0 * * *', async () => {
     try {
       console.log('[AutoUnsuspend] Starting daily auto-unsuspend check...');
 
@@ -40,6 +42,17 @@ export function startAutoUnsuspendJob() {
   });
 
   console.log('✅ Auto-unsuspend cron job scheduled (daily at 00:10)');
+}
+
+/**
+ * Cleanly stop the auto-unsuspend cron job during shutdown
+ */
+export function stopAutoUnsuspendJob() {
+  if (autoUnsuspendTask) {
+    autoUnsuspendTask.stop();
+    autoUnsuspendTask = null;
+    console.log('[AutoUnsuspend] Cron job stopped.');
+  }
 }
 
 /**

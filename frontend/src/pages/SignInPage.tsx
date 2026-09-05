@@ -12,7 +12,8 @@ const SignInPage: React.FC = () => {
   const handleSignIn = async (formData: any) => {
     try {
       setError(null);
-      await login(formData.email, formData.password, formData.rememberMe);
+      console.log('Form Data:', formData); // Log the form data for debugging
+      await login(formData.email, formData.password);
       navigate('/');
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Login failed. Please try again.');

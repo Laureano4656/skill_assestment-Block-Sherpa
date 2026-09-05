@@ -1,4 +1,5 @@
 import fs from "fs";
+import mongoose from "mongoose";
 import imagekit from "../config/imagekit.js";
 import Property from "../models/propertyModel.js";
 
@@ -57,6 +58,14 @@ const addproperty = async (req, res) => {
 
 const listproperty = async (req, res) => {
     try {
+        if (!mongoose.connection.readyState || mongoose.connection.readyState !== 1) {
+            return res.status(503).json({
+                success: false,
+                message: "Database connection unavailable",
+                code: "DB_NOT_CONNECTED"
+            });
+        }
+
         // Pagination parameters
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20; // Default 20 per page
@@ -92,6 +101,13 @@ const listproperty = async (req, res) => {
             }
         });
     } catch (error) {
+        if (error.name === 'MongoNotConnectedError' || !mongoose.connection.readyState) {
+            return res.status(503).json({
+                success: false,
+                message: "Database connection unavailable",
+                code: "DB_NOT_CONNECTED"
+            });
+        }
         console.log("Error listing products: ", error);
         res.status(500).json({ message: "Server Error", success: false });
     }

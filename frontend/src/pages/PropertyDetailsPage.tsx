@@ -10,6 +10,7 @@ import PropertyAbout from '../components/property-details/PropertyAbout';
 import PropertyAmenities from '../components/property-details/PropertyAmenities';
 import PropertyLocation from '../components/property-details/PropertyLocation';
 import ScheduleViewingCard from '../components/property-details/ScheduleViewingCard';
+import BlockchainRegistryCard from '../components/property-details/BlockchainRegistryCard';
 import { propertiesAPI } from '../services/api';
 import { useSEO } from '../hooks/useSEO';
 import StructuredData from '../components/common/StructuredData';
@@ -30,6 +31,7 @@ interface PropertyData {
   amenities: string[];
   phone: string;
   googleMapLink?: string;
+  onChainPropertyId?: number | null;
 }
 
 const PropertyDetailsPage: React.FC = () => {
@@ -197,10 +199,17 @@ const PropertyDetailsPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Column - Schedule Viewing Sidebar */}
+            {/* Right Column - Schedule Viewing Sidebar & Blockchain Passport */}
             <div className="lg:col-span-1">
               <ScheduleViewingCard
                 property={{ name: property.title, id: property._id }}
+              />
+              <BlockchainRegistryCard
+                propertyId={property._id}
+                propertyTitle={property.title}
+                propertyLocation={property.location}
+                propertyPrice={property.price}
+                initialOnChainId={property.onChainPropertyId}
               />
             </div>
           </div>

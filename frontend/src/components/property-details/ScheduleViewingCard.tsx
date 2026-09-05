@@ -11,7 +11,7 @@ interface ScheduleViewingCardProps {
 
 const ScheduleViewingCard: React.FC<ScheduleViewingCardProps> = ({ property }) => {
   const imgBackground = "https://cdn-icons-png.flaticon.com/512/1067/1067566.png";
-  
+
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -81,7 +81,7 @@ const ScheduleViewingCard: React.FC<ScheduleViewingCardProps> = ({ property }) =
   }
 
   return (
-    <div className="bg-white border border-[#E6E0DA] rounded-2xl p-8 shadow-lg sticky top-8">
+    <div className="bg-white border border-[#E6E0DA] rounded-2xl p-8 shadow-lg top-8">
       {/* Header */}
       <div className="flex items-center gap-2 mb-6">
         <span className="material-icons text-[#D4755B] text-xl">
@@ -95,7 +95,7 @@ const ScheduleViewingCard: React.FC<ScheduleViewingCardProps> = ({ property }) =
       {/* Agent Info */}
       <div className="flex items-center gap-4 mb-6 pb-6 border-b border-[#E6E0DA]">
         <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
-          <img 
+          <img
             src={imgBackground}
             alt="Agent"
             className="w-full h-full object-cover mt-2"

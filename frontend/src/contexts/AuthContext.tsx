@@ -40,8 +40,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
-  const login = useCallback(async (email: string, password: string, rememberMe: boolean = false) => {
-    const { data } = await userAPI.login({ email, password, rememberMe });
+  const login = useCallback(async (email: string, password: string) => {
+    console.log('Attempting login with email:', email); // Log the email for debugging
+    const { data } = await userAPI.login({ email, password });
+    console.log('Login response data:', data); // Log the response data for debugging
     if (data.success && data.token) {
       localStorage.setItem('REChain_token', data.token);
       localStorage.setItem('REChain_user', JSON.stringify(data.user));
